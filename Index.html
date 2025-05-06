@@ -1,0 +1,151 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ultimate Movie Recommender</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #f0f0f0;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #00ff99;
+    }
+    select, input, button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 1rem;
+      border-radius: 5px;
+      border: none;
+    }
+    button {
+      background-color: #00cc66;
+      color: white;
+      cursor: pointer;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .card {
+      background: #1f1f1f;
+      border: 1px solid #00ff99;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+    .poster {
+      width: 100%;
+      border-radius: 5px;
+    }
+    a.trailer {
+      display: block;
+      margin-top: 5px;
+      color: #00ccff;
+    }
+    .platforms {
+      margin-top: 5px;
+      font-size: 0.9rem;
+      color: #cccccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ultimate Movie/TV/Anime Recommender</h1>
+  <input id="recentMovies" type="text" placeholder="Recently watched (optional)" />
+  <input id="storyHint" type="text" placeholder="Type of story you want (optional)" />
+  <select id="mood">
+    <option value="">Mood</option>
+    <option>Happy</option>
+    <option>Sad</option>
+    <option>Romantic</option>
+    <option>Adventurous</option>
+    <option>Excited</option>
+  </select>
+  <select id="genre">
+    <option value="">Genre</option>
+    <option value="28">Action</option>
+    <option value="35">Comedy</option>
+    <option value="18">Drama</option>
+    <option value="14">Fantasy</option>
+    <option value="27">Horror</option>
+    <option value="9648">Mystery</option>
+    <option value="10749">Romance</option>
+    <option value="53">Thriller</option>
+    <option value="16">Animation</option>
+  </select>
+  <select id="type">
+    <option value="movie">Movie</option>
+    <option value="tv">TV Series</option>
+    <option value="anime">Anime</option>
+  </select>
+  <select id="language">
+    <option value="en">English</option>
+    <option value="ja">Japanese</option>
+    <option value="hi">Hindi</option>
+    <option value="ko">Korean</option>
+  </select>
+  <button onclick="getRecommendations()">Get Recommendations</button>
+  <div id="results" class="grid"></div>  <script>
+    const API_KEY = 'e948aee24acb61883a5ce36329423c6b';
+
+    async function getRecommendations() {
+      const type = document.getElementById('type').value;
+      const lang = document.getElementById('language').value;
+      const genre = document.getElementById('genre').value;
+      const mood = document.getElementById('mood').value;
+      const storyHint = document.getElementById('storyHint').value.toLowerCase();
+      const page = Math.floor(Math.random() * 10) + 1;
+
+      let url = `https://api.themoviedb.org/3/discover/${type === 'anime' ? 'tv' : type}?api_key=${API_KEY}&language=${lang}&sort_by=popularity.desc&include_adult=false&page=${page}`;
+
+      if (genre) url += `&with_genres=${genre}`;
+      if (type === 'anime') url += `&with_original_language=ja&with_genres=16`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+      const results = data.results;
+
+      const output = document.getElementById('results');
+      output.innerHTML = '';
+
+      for (let movie of results) {
+        const title = movie.title || movie.name;
+        const poster = movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '';
+        const id = movie.id;
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <img class="poster" src="${poster}" alt="Poster">
+          <h3>${title}</h3>
+          <div class="platforms" id="platforms-${id}">Loading platforms...</div>
+          <a class="trailer" href="https://www.youtube.com/results?search_query=${encodeURIComponent(title + ' trailer')}" target="_blank">Watch Trailer</a>
+        `;
+        output.appendChild(card);
+        fetchWatchProviders(type === 'anime' ? 'tv' : type, id);
+      }
+    }
+
+    async function fetchWatchProviders(mediaType, id) {
+      const url = `https://api.themoviedb.org/3/${mediaType}/${id}/watch/providers?api_key=${API_KEY}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const elem = document.getElementById(`platforms-${id}`);
+      const providers = data.results.IN || data.results.US || data.results.GB || {};
+      const flat = providers.flatrate || [];
+      if (flat.length) {
+        elem.innerText = 'Available on: ' + flat.map(p => p.provider_name).join(', ');
+      } else {
+        elem.innerText = 'May not be available for free';
+      }
+    }
+  </script></body>
+</html>
